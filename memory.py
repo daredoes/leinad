@@ -1,11 +1,11 @@
 from slackbot.bot import respond_to
 from slackbot.bot import listen_to
-from slackbot.utils import download_file, create_tmp_file, mag_database, till_white, till_end
+from slackbot.utils import download_file, create_tmp_file, database, till_white, till_end
 import re
 import json, os
 import random
 
-db = mag_database()
+db = database()
 
 def memory_dict(term, thought):
     return {"key":term, "note":thought}
