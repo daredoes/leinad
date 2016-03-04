@@ -18,7 +18,7 @@ def remember(message, key, note):
         temp = note.split(" ")
         temp2 = ""
         for x in temp:
-            if x[0] == "<"  and x[len(x)-1] == ">":
+            if x[0] == "<" and x[len(x)-1] == ">":
                 temp2 += " " + (x.strip("><"))
             else:
                 temp2 += " " + (x)
