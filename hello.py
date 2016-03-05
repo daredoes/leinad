@@ -69,7 +69,7 @@ woagh = '\\bwo+?a+?g+?h+?\\b'
 @respond_to(woagh, re.IGNORECASE, halp="wo(repeatable)a(repeatable)g(repeatable)h(repeatable)")
 def woooaaagh(message):
     if message.is_approved("any"):
-        message.react("colossus")
+        #message.react("colossus")
         message.send("*WOAAAAAAAGGHHHH!*\nhttps://pbs.twimg.com/media/B8JvTeMIIAAbXYA.jpg:large")
 
 help_str = '\\bhelp\\b'
