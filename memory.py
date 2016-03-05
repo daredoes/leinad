@@ -1,18 +1,19 @@
 from slackbot.bot import respond_to
 from slackbot.bot import listen_to
-from slackbot.utils import download_file, create_tmp_file, database, till_white, till_end
+from slackbot.settings import db
+from slackbot.utils import download_file, create_tmp_file, till_white, till_end
 import re
 import json, os
 import random
 
-db = database()
 
 def memory_dict(term, thought):
     return {"key":term, "note":thought}
 
 rem = "\\bremember\\b %s \\bis\\b %s" % (till_white, till_end)
-@listen_to(rem, re.IGNORECASE)
-@respond_to(rem, re.IGNORECASE)
+rem_help = "remember (KEY) is (VALUE) - sets the key to whatever is typed after 'is '"
+@listen_to(rem, re.IGNORECASE, rem_help)
+@respond_to(rem, re.IGNORECASE, rem_help)
 def remember(message, key, note):
     if message.is_approved("any"):
         temp = note.split(" ")
@@ -30,8 +31,9 @@ def remember(message, key, note):
             message.send("I already know something about %s" % key)
 
 wha = "\\bwhat is\\b %s" % (till_white)
-@listen_to(wha, re.IGNORECASE)
-@respond_to(wha, re.IGNORECASE)
+wha_help = "what is (KEY) - remembers the thing associated with KEY"
+@listen_to(wha, re.IGNORECASE, wha_help)
+@respond_to(wha, re.IGNORECASE, wha_help)
 def what(message, key):
     if message.is_approved("any"):
         if db.mem.count({"key":key}) != 0:
@@ -42,6 +44,7 @@ def what(message, key):
             message.send("I don't know what %s is" % key)
 
 fer = '\\bforget what %s is' % till_white
+fer_help = "forget what  (KEY) is - forgets the thing associated with KEY"
 @listen_to(fer, re.IGNORECASE)
 @respond_to(fer, re.IGNORECASE)
 def forget(message, key):

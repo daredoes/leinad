@@ -1,9 +1,9 @@
 from slackbot.bot import respond_to
 from slackbot.bot import listen_to
-from slackbot.utils import download_file, create_tmp_file, database, till_white, till_end
+from slackbot.settings import db
+from slackbot.utils import download_file, create_tmp_file, till_white, till_end
 import re
 
-db = database()
 
 def vote_dict(title, options, starter, once):
     if isinstance(options, str):
@@ -24,9 +24,28 @@ def delete_votes(message):
         db.votes.delete_many({})
         message.send("All Votes Deleted")
 
-vote_string = "\\bstart vote\\b %s %s %s" % (till_white, till_white, till_end)
-@listen_to(vote_string, re.IGNORECASE)
-@respond_to(vote_string, re.IGNORECASE)
+vote_string = "\\bstart vote\\b %s %s" % (till_white, till_end)
+vote_string_help = "start vote (KEY) (OPTIONS) - Options must be comma-separated. Example: 1,2,3"
+@listen_to(vote_string, re.IGNORECASE, vote_string_help)
+@respond_to(vote_string, re.IGNORECASE, vote_string_help)
+def start_vote(message, title, options):
+    if message.is_approved('any'):
+        vote_start = "Vote \"%s\" started.\nPlease Vote with 'vote %s (option)'\n" % (title, title)
+        optss = ""
+        for opt in options.split(","):
+            optss += opt + '\n'
+        if db.votes.count({"title":str(title)}) == 0:
+            yes_once = False
+            db.votes.insert_one(vote_dict(title, options, message.body['user'], yes_once))
+            message.send(vote_start)
+            message.upload_snippet(optss, "Options")
+    else:
+        message.send("User does not have sufficient permission.")
+
+vote_string = "\\bstart vote once\\b %s %s" % (till_white, till_end)
+vote_string_help = "start vote once (KEY) (OPTIONS) - Users Can Only Vote Once - Options must be comma-separated. Example: 1,2,3"
+@listen_to(vote_string, re.IGNORECASE, vote_string_help)
+@respond_to(vote_string, re.IGNORECASE, vote_string_help)
 def start_vote(message, once, title, options):
     if message.is_approved('any'):
         vote_start = "Vote \"%s\" started.\nPlease Vote with 'vote %s (option)'\n" % (title, title)
@@ -34,7 +53,7 @@ def start_vote(message, once, title, options):
         for opt in options.split(","):
             optss += opt + '\n'
         if db.votes.count({"title":str(title)}) == 0:
-            yes_once = once == "once"
+            yes_once = True
             db.votes.insert_one(vote_dict(title, options, message.body['user'], yes_once))
             message.send(vote_start)
             message.upload_snippet(optss, "Options")
@@ -42,8 +61,9 @@ def start_vote(message, once, title, options):
         message.send("User does not have sufficient permission.")
 
 vote_end = "\\bend vote\\b %s" % till_white
-@listen_to(vote_end, re.IGNORECASE)
-@respond_to(vote_end, re.IGNORECASE)
+vote_end_help = "End Vote (KEY) - Ends Vote KEY, Can Only Be Used by Vote-Creator"
+@listen_to(vote_end, re.IGNORECASE, vote_end_help)
+@respond_to(vote_end, re.IGNORECASE, vote_end_help)
 def end_vote(message, title):
     if message.is_approved('any'):
         if db.votes.count({"title":title}) != 0:
@@ -59,8 +79,9 @@ def end_vote(message, title):
 
 
 vote_option = "\\badd vote\\b %s %s" % (till_white, till_end)
-@listen_to(vote_option, re.IGNORECASE)
-@respond_to(vote_option, re.IGNORECASE)
+vote_option_help = "add vote (KEY) (VALUE) - Votes for VALUE in Vote:KEY"
+@listen_to(vote_option, re.IGNORECASE, vote_option_help)
+@respond_to(vote_option, re.IGNORECASE, vote_option_help)
 def add_vote_option(message, title, option):
     if message.is_approved('any'):
         if db.votes.count({"title":title}) != 0:
@@ -109,11 +130,11 @@ def add_vote(message, title, vote):
 
 vote_list = "\\blist votes\\b %s" % (till_white)
 vote_list2 = "\\blist vote\\b %s" % (till_white)
-
-@listen_to(vote_list2, re.IGNORECASE)
-@respond_to(vote_list2, re.IGNORECASE)
-@listen_to(vote_list, re.IGNORECASE)
-@respond_to(vote_list, re.IGNORECASE)
+vote_list_help = "list vote[s] (KEY) - Lists all entered votes for Vote-KEY"
+@listen_to(vote_list2, re.IGNORECASE, vote_list_help)
+@respond_to(vote_list2, re.IGNORECASE, vote_list_help)
+@listen_to(vote_list, re.IGNORECASE, vote_list_help)
+@respond_to(vote_list, re.IGNORECASE, vote_list_help)
 def list_votes(message, title):
     temp = ""
     if db.votes.count({"title": title}) != 0:
@@ -126,21 +147,23 @@ def list_votes(message, title):
         message.send("Vote does not exist")
 
 vote_list = "\\blist votes-info\\b %s" % (till_white)
-@listen_to(vote_list, re.IGNORECASE)
-@respond_to(vote_list, re.IGNORECASE)
+vote_list_help = "list votes-info (KEY) - lists the detailed info with KEY"
+@listen_to(vote_list, re.IGNORECASE, vote_list_help)
+@respond_to(vote_list, re.IGNORECASE, vote_list_help)
 def list_votes_info(message, title):
-    temp = ""
-    if db.votes.count({"title": title}) != 0:
-        thing = db.votes.find({"title": title})
-        for x in thing:
-            for y in str(x['options']).split(","):
-                temp += "%s - %s\n" % (y, x[y])
-                for z in x[y+ "-users"].split(','):
-                    temp += "\t%s" % z
-                temp += "\n"
+    if message.is_approved("admin"):
+        temp = ""
+        if db.votes.count({"title": title}) != 0:
+            thing = db.votes.find({"title": title})
+            for x in thing:
+                for y in str(x['options']).split(","):
+                    temp += "%s - %s\n" % (y, x[y])
+                    for z in x[y+ "-users"].split(','):
+                        temp += "\t%s" % z
+                    temp += "\n"
 
 
-        message.upload_snippet(temp, "Vote: %s options" % title)
-    else:
-        message.send("Vote does not exist")
+            message.upload_snippet(temp, "Vote: %s options" % title)
+        else:
+            message.send("Vote does not exist")
 
